@@ -172,15 +172,15 @@ static void printHeader()
 
     Terminal::clear();
 
-    const std::string h = repeat("=", 50);
+    const std::string h = repeat("=", 60);
     std::cout
         << col(PURPLE, "+" + h + "+\n")
         << col(PURPLE, "||") << col(PURPLE_L, bold(center("SUPER EMULATOR", 50))) << col(PURPLE, "||\n")
         << col(PURPLE, "||") << col(GRAY,     center("v" + std::string(VERSION) +
                                                       "   System: " + std::string(SYSTEM) +
-                                                      "   Target: " + std::to_string(TARGET_FPS) + " FPS", 50))
+                                                      "   Target: " + std::to_string(TARGET_FPS) + " FPS", 60))
                              << col(PURPLE, "||\n")
-        << col(PURPLE, "||") << col(GRAY,     center("iNES 1.0 / 2.0  +  Keyboard  +  XInput Gamepad", 50)) << col(PURPLE, "||\n")
+        << col(PURPLE, "||") << col(GRAY,     center("iNES 1.0 / 2.0  +  Keyboard  +  XInput Gamepad", 60)) << col(PURPLE, "||\n")
         << col(PURPLE, "+" + h + "+\n\n");
 }
 
