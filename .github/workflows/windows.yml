@@ -27,7 +27,7 @@ jobs:
       - name: Compile
         shell: cmd
         run: |
-          cl /EHsc /std:c++20 source\Main.cpp /Fe:build\SuperEmulator.exe
+          cl /EHsc /std:c++20 source\Main.cpp source\menu\MainMenu.cpp source\roms\Rom.cpp /Fe:build\SuperEmulator.exe
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
