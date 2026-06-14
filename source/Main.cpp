@@ -217,6 +217,7 @@ static void printControls()
     row("Enter",           "Start");
     row("Shift",           "Select");
     row("Escape",          "Quit emulation");
+    row("F1",              "Toggle FPS display");
 
     sect("-- Gamepad (XInput) --");
     row("D-Pad",           "D-Pad");
