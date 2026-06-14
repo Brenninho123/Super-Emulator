@@ -7,6 +7,7 @@
 #include <string_view>
 #include <thread>
 
+#include "controls/Controls.hpp"
 #include "core/Terminal.hpp"
 #include "menu/MainMenu.hpp"
 #include "roms/Rom.hpp"
@@ -48,35 +49,49 @@ public:
         return true;
     }
 
-    void update()
+    void update(const InputState& input)
     {
         ++frameCount_;
+        (void)input;
     }
 
-    void render()
+    void render(const InputState& input)
     {
         ++framesThisSec_;
 
         auto   now   = std::chrono::steady_clock::now();
         double delta = std::chrono::duration<double>(now - fpsTimer_).count();
 
-        if (delta >= 1.0)
+        if (delta < 1.0)
+            return;
+
+        using namespace Terminal::Color;
+
+        auto btn = [&](Button b, std::string_view label) -> std::string
         {
-            using namespace Terminal::Color;
-            std::cout << std::format(
-                "{}[FPS]{} {:.1f}   {}frame {}{}\n",
-                std::string(PURPLE), std::string(Terminal::Color::RESET),
-                framesThisSec_ / delta,
-                std::string(GRAY), frameCount_,
-                std::string(Terminal::Color::RESET)
-            );
-            framesThisSec_ = 0;
-            fpsTimer_      = now;
-        }
+            return input.pressed(b)
+                ? std::string(PURPLE_L) + std::string(BOLD) + std::string(label) + std::string(RESET)
+                : std::string(GRAY)     + std::string(label) + std::string(RESET);
+        };
+
+        std::cout
+            << PURPLE << "[FPS]" << RESET
+            << std::format(" {:5.1f}  ", framesThisSec_ / delta)
+            << GRAY << "| " << RESET
+            << btn(Button::Up,    "U") << btn(Button::Down, "D")
+            << btn(Button::Left,  "L") << btn(Button::Right,"R")
+            << GRAY << " | " << RESET
+            << btn(Button::B, "B") << " " << btn(Button::A, "A")
+            << GRAY << " | " << RESET
+            << btn(Button::Select, "Se") << " " << btn(Button::Start, "St")
+            << '\n';
+
+        framesThisSec_ = 0;
+        fpsTimer_      = now;
     }
 
-    [[nodiscard]] bool running() const { return running_; }
-    void               stop()         { running_ = false; }
+    [[nodiscard]] bool running() const noexcept { return running_; }
+    void               stop()         noexcept  { running_ = false; }
 
 private:
     Rom  rom_;
@@ -106,6 +121,52 @@ static void printHeader()
               << RESET << '\n';
 }
 
+static void printControls()
+{
+    using namespace Terminal::Color;
+
+    const std::string hline = Terminal::repeat("-", 40);
+
+    std::cout << PURPLE << BOLD << "+" << hline << "+\n" << RESET
+              << PURPLE << BOLD << "||" << RESET
+              << Terminal::center("CONTROLS", 40)
+              << PURPLE << BOLD << "||\n" << RESET
+              << PURPLE << BOLD << "+" << hline << "+\n" << RESET;
+
+    auto row = [&](std::string_view input, std::string_view action)
+    {
+        std::cout << PURPLE << BOLD << "|| " << RESET
+                  << PURPLE_L << Terminal::padRight(std::string(input), 18) << RESET
+                  << GRAY << "->  " << RESET
+                  << Terminal::padRight(std::string(action), 16)
+                  << PURPLE << BOLD << " ||\n" << RESET;
+    };
+
+    std::cout << PURPLE << BOLD << "||" << RESET
+              << GRAY << Terminal::center("-- Keyboard --", 40) << RESET
+              << PURPLE << BOLD << "||\n" << RESET;
+
+    row("Arrows / WASD",   "D-Pad");
+    row("Z  / Numpad 1",   "A Button");
+    row("X  / Numpad 2",   "B Button");
+    row("Enter",           "Start");
+    row("Shift",           "Select");
+    row("Escape",          "Quit");
+
+    std::cout << PURPLE << BOLD << "||" << RESET
+              << GRAY << Terminal::center("-- Gamepad --", 40) << RESET
+              << PURPLE << BOLD << "||\n" << RESET;
+
+    row("D-Pad",           "D-Pad");
+    row("A",               "A Button");
+    row("B",               "B Button");
+    row("Start",           "Start");
+    row("Back",            "Select");
+    row("Left Stick",      "D-Pad");
+
+    std::cout << PURPLE << BOLD << "+" << hline << "+\n" << RESET << '\n';
+}
+
 int main()
 {
 #ifdef _WIN32
@@ -116,11 +177,15 @@ int main()
     try
     {
         printHeader();
+        printControls();
 
         Emulator emulator;
+        Controls controls;
 
         if (!emulator.initialize())
             throw std::runtime_error("Failed to initialize emulator.");
+
+        std::cout << '\n';
 
         MainMenu menu;
         menu.scanRoms("roms");
@@ -137,14 +202,14 @@ int main()
             }
 
             const std::string selected = menu.getSelectedRom();
-
             if (selected.empty())
                 continue;
 
             if (!emulator.loadRom(selected))
             {
                 using namespace Terminal::Color;
-                std::cerr << PURPLE << "[ROM]" << RESET << " Failed to load ROM. Press ENTER to retry...";
+                std::cerr << PURPLE << "[ROM]" << RESET
+                          << " Failed to load ROM. Press ENTER to retry...";
                 std::cin.ignore();
                 std::cin.get();
                 continue;
@@ -157,8 +222,13 @@ int main()
         {
             auto frameStart = std::chrono::steady_clock::now();
 
-            emulator.update();
-            emulator.render();
+            controls.poll();
+
+            if (controls.quitRequested())
+                emulator.stop();
+
+            emulator.update(controls.state());
+            emulator.render(controls.state());
 
             auto elapsed  = std::chrono::duration_cast<std::chrono::duration<double>>(
                 std::chrono::steady_clock::now() - frameStart
@@ -167,14 +237,6 @@ int main()
 
             if (sleepFor > std::chrono::duration<double>::zero())
                 std::this_thread::sleep_for(sleepFor);
-
-            if (std::cin.rdbuf()->in_avail())
-            {
-                char c;
-                std::cin >> c;
-                if (c == 'q' || c == 'Q')
-                    emulator.stop();
-            }
         }
 
         using namespace Terminal::Color;
@@ -188,12 +250,12 @@ int main()
     catch (const std::exception& e)
     {
         std::cerr << Terminal::Color::PURPLE << "\n[FATAL] "
-                  << Terminal::Color::RESET << e.what() << '\n';
+                  << Terminal::Color::RESET  << e.what() << '\n';
     }
     catch (...)
     {
         std::cerr << Terminal::Color::PURPLE << "\n[FATAL] "
-                  << Terminal::Color::RESET << "Unknown exception.\n";
+                  << Terminal::Color::RESET  << "Unknown exception.\n";
     }
 
     std::cout << "\nPress ENTER to exit...";

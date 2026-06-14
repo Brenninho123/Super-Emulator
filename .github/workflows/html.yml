@@ -32,6 +32,7 @@ jobs:
           em++ source/Main.cpp \
           source/menu/MainMenu.cpp \
           source/roms/Rom.cpp \
+          source/controls/Controls.cpp \
           -std=c++20 \
           -O3 \
           -o build/index.html
