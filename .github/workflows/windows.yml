@@ -1,0 +1,36 @@
+name: Build Windows
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+  pull_request:
+
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Create Build Directory
+        run: mkdir build
+
+      - name: Compile
+        shell: cmd
+        run: |
+          cl /EHsc /std:c++20 source\Main.cpp /Fe:build\SuperEmulator.exe
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Super-Emulator-Windows
+          path: build/SuperEmulator.exe
