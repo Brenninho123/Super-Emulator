@@ -1,20 +1,14 @@
 #include <iostream>
-#include "../project.cpp"
+#include "Project.hpp"
 
 int main()
 {
-    std::cout << "Super Emulator" << std::endl;
-    std::cout << "Main Class: " << Project::MAIN_CLASS << std::endl;
-    std::cout << "Source Path: " << Project::SOURCE_PATH << std::endl;
+    std::cout << Project::NAME << '\n';
+    std::cout << Project::VERSION << '\n';
+    std::cout << Project::getTargetName() << '\n';
 
-    auto sourceFiles = Project::getSourceFiles();
-
-    std::cout << "\nLoaded Source Files:\n";
-
-    for (const auto& file : sourceFiles)
-    {
-        std::cout << file << std::endl;
-    }
+    for (const auto& file : Project::getSourceFiles())
+        std::cout << file << '\n';
 
     return 0;
 }
