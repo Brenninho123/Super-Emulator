@@ -6,13 +6,14 @@
 class MainMenu
 {
 public:
-    MainMenu();
-
     void scanRoms(const std::string& romFolder);
     void show();
+
     std::string getSelectedRom() const;
+    bool        wantsQuit()      const;
 
 private:
-    std::vector<std::string> roms;
-    int selectedIndex = -1;
+    std::vector<std::string> roms_;
+    int  selectedIndex_ = -1;
+    bool quit_          = false;
 };

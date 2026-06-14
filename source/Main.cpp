@@ -1,18 +1,15 @@
-#include <iostream>
 #include <chrono>
-#include <thread>
 #include <exception>
 #include <filesystem>
 #include <format>
+#include <iostream>
 #include <string>
 #include <string_view>
+#include <thread>
 
+#include "core/Terminal.hpp"
 #include "menu/MainMenu.hpp"
 #include "roms/Rom.hpp"
-
-#ifdef _WIN32
-#include <windows.h>
-#endif
 
 static constexpr std::string_view VERSION    = "1.0.0";
 static constexpr std::string_view SYSTEM     = "NES";
@@ -24,7 +21,8 @@ class Emulator
 public:
     [[nodiscard]] bool initialize()
     {
-        std::cout << "[Core] Initializing emulator...\n";
+        using namespace Terminal::Color;
+        std::cout << PURPLE << "[Core]" << RESET << " Initializing emulator...\n";
         running_       = true;
         romLoaded_     = false;
         frameCount_    = 0;
@@ -40,17 +38,13 @@ public:
 
         romLoaded_ = true;
 
-        std::cout << std::format(
-            "\n[ROM] {}\n"
-            "      PRG Banks : {}\n"
-            "      CHR Banks : {}\n"
-            "      Mapper    : {}\n\n",
-            path.filename().string(),
-            rom_.getPRGBanks(),
-            rom_.getCHRBanks(),
-            rom_.getMapper()
-        );
-
+        using namespace Terminal::Color;
+        std::cout << '\n'
+                  << PURPLE << "[ROM] " << RESET
+                  << PURPLE_L << path.filename().string() << RESET << '\n'
+                  << "      PRG Banks : " << static_cast<int>(rom_.getPRGBanks()) << '\n'
+                  << "      CHR Banks : " << static_cast<int>(rom_.getCHRBanks()) << '\n'
+                  << "      Mapper    : " << static_cast<int>(rom_.getMapper())   << "\n\n";
         return true;
     }
 
@@ -68,7 +62,14 @@ public:
 
         if (delta >= 1.0)
         {
-            std::cout << std::format("[FPS] {:.1f}\n", framesThisSec_ / delta);
+            using namespace Terminal::Color;
+            std::cout << std::format(
+                "{}[FPS]{} {:.1f}   {}frame {}{}\n",
+                std::string(PURPLE), std::string(Terminal::Color::RESET),
+                framesThisSec_ / delta,
+                std::string(GRAY), frameCount_,
+                std::string(Terminal::Color::RESET)
+            );
             framesThisSec_ = 0;
             fpsTimer_      = now;
         }
@@ -79,7 +80,7 @@ public:
 
 private:
     Rom  rom_;
-    bool running_  = false;
+    bool running_   = false;
     bool romLoaded_ = false;
 
     unsigned long long frameCount_    = 0;
@@ -91,25 +92,29 @@ private:
 
 static void printHeader()
 {
-    std::cout << std::format(
-        "========================================\n"
-        "          SUPER EMULATOR\n"
-        "========================================\n"
-        "Version : {}\n"
-        "System  : {}\n"
-        "Target  : {} FPS\n"
-        "========================================\n\n",
-        VERSION, SYSTEM, TARGET_FPS
-    );
+    using namespace Terminal::Color;
+
+    Terminal::clear();
+
+    const std::string hline = Terminal::repeat("=", 46);
+
+    std::cout << PURPLE << BOLD
+              << "+" << hline << "+\n"
+              << "||" << Terminal::center("SUPER EMULATOR  v" + std::string(VERSION), 46) << "||\n"
+              << "||" << Terminal::center(std::format("System: {}  |  {} FPS", SYSTEM, TARGET_FPS), 46) << "||\n"
+              << "+" << hline << "+\n"
+              << RESET << '\n';
 }
 
 int main()
 {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+#endif
+    Terminal::enableAnsi();
+
     try
     {
-#ifdef _WIN32
-        SetConsoleOutputCP(CP_UTF8);
-#endif
         printHeader();
 
         Emulator emulator;
@@ -124,19 +129,22 @@ int main()
         {
             menu.show();
 
+            if (menu.wantsQuit())
+            {
+                using namespace Terminal::Color;
+                std::cout << '\n' << PURPLE_L << "Goodbye." << RESET << '\n';
+                return 0;
+            }
+
             const std::string selected = menu.getSelectedRom();
 
             if (selected.empty())
-            {
-                std::cout << "\nNo ROM selected. Press ENTER to retry...";
-                std::cin.ignore();
-                std::cin.get();
                 continue;
-            }
 
             if (!emulator.loadRom(selected))
             {
-                std::cout << "\nFailed to load ROM. Press ENTER to retry...";
+                using namespace Terminal::Color;
+                std::cerr << PURPLE << "[ROM]" << RESET << " Failed to load ROM. Press ENTER to retry...";
                 std::cin.ignore();
                 std::cin.get();
                 continue;
@@ -169,7 +177,9 @@ int main()
             }
         }
 
-        std::cout << "\nEmulation finished.\nPress ENTER to exit...";
+        using namespace Terminal::Color;
+        std::cout << '\n' << PURPLE_L << "Emulation finished." << RESET
+                  << "\nPress ENTER to exit...";
         std::cin.ignore();
         std::cin.get();
 
@@ -177,11 +187,13 @@ int main()
     }
     catch (const std::exception& e)
     {
-        std::cerr << std::format("\n[FATAL] {}\n", e.what());
+        std::cerr << Terminal::Color::PURPLE << "\n[FATAL] "
+                  << Terminal::Color::RESET << e.what() << '\n';
     }
     catch (...)
     {
-        std::cerr << "\n[FATAL] Unknown exception.\n";
+        std::cerr << Terminal::Color::PURPLE << "\n[FATAL] "
+                  << Terminal::Color::RESET << "Unknown exception.\n";
     }
 
     std::cout << "\nPress ENTER to exit...";
