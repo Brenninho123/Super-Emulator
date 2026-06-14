@@ -9,16 +9,81 @@
 
 namespace fs = std::filesystem;
 
-static constexpr size_t BOX_W = 46;
+// ─── column cell widths (content + 1-space padding each side) ────────────────
+static constexpr size_t W_IDX    =  4;  //  2 content
+static constexpr size_t W_NAME   = 34;  // 32 content
+static constexpr size_t W_MAPPER =  6;  //  4 content
+static constexpr size_t W_PRG    =  4;  //  2 content
+static constexpr size_t W_CHR    =  4;  //  2 content
+static constexpr size_t W_TV     =  4;  //  2 content
+// 5 inner ║ separators
+static constexpr size_t BOX_INNER =
+    W_IDX + 1 + W_NAME + 1 + W_MAPPER + 1 + W_PRG + 1 + W_CHR + 1 + W_TV;
+// BOX_INNER = 4+1+34+1+6+1+4+1+4+1+4 = 61
+// Full display width = ║(1) + 61 + ║(1) = 63 chars
 
-static void borderRow(std::string_view content)
+// ─── separator row builders ──────────────────────────────────────────────────
+static std::string makeSep(std::string_view l,
+                           std::string_view mid,
+                           std::string_view r)
 {
-    using namespace Terminal::Color;
-    std::cout << PURPLE << BOLD << "||" << RESET
-              << content
-              << PURPLE << BOLD << "||\n" << RESET;
+    using namespace Terminal;
+    return col(Color::PURPLE,
+        std::string(l) +
+        repeat("=", W_IDX)    + std::string(mid) +
+        repeat("=", W_NAME)   + std::string(mid) +
+        repeat("=", W_MAPPER) + std::string(mid) +
+        repeat("=", W_PRG)    + std::string(mid) +
+        repeat("=", W_CHR)    + std::string(mid) +
+        repeat("=", W_TV)     + std::string(r)
+    ) + "\n";
 }
 
+static std::string makeFullSep(std::string_view l, std::string_view r)
+{
+    using namespace Terminal;
+    return col(Color::PURPLE,
+        std::string(l) + repeat("=", BOX_INNER) + std::string(r)
+    ) + "\n";
+}
+
+// ─── full-width text row ─────────────────────────────────────────────────────
+static void printWide(std::string_view text,
+                      std::string_view textColor = Terminal::Color::WHITE)
+{
+    using namespace Terminal;
+    std::cout << col(Color::PURPLE, "||")
+              << col(textColor, center(text, BOX_INNER))
+              << col(Color::PURPLE, "||\n");
+}
+
+// ─── data row ────────────────────────────────────────────────────────────────
+void MainMenu::printRow(size_t idx, const RomInfo& info) const
+{
+    using namespace Terminal::Color;
+    using namespace Terminal;
+
+    const std::string name = info.name.size() > 32
+        ? info.name.substr(0, 29) + "..."
+        : info.name;
+
+    const std::string_view nameColor = info.valid ? PURPLE_L : GRAY;
+    const std::string      mpr  = info.valid ? std::format("{:>4}", info.mapper)   : "----";
+    const std::string      prg  = info.valid ? std::format("{:>2}", info.prgBanks) : "--";
+    const std::string      chr_ = info.valid ? std::format("{:>2}", info.chrBanks) : "--";
+    const std::string      tv   = info.valid ? (info.pal ? "PA" : "NT")            : "--";
+
+    std::cout
+        << col(PURPLE, "|| ") << col(WHITE,  std::format("{:>2}", idx))
+        << col(PURPLE, " || ") << col(nameColor, std::format("{:<32}", name))
+        << col(PURPLE, " || ") << col(GRAY,  mpr)
+        << col(PURPLE, " || ") << col(GRAY,  prg)
+        << col(PURPLE, " || ") << col(GRAY,  chr_)
+        << col(PURPLE, " || ") << col(GRAY,  tv)
+        << col(PURPLE, " ||\n");
+}
+
+// ─── scan ────────────────────────────────────────────────────────────────────
 void MainMenu::scanRoms(const std::string& romFolder)
 {
     roms_.clear();
@@ -30,70 +95,89 @@ void MainMenu::scanRoms(const std::string& romFolder)
     }
 
     for (const auto& entry : fs::directory_iterator(romFolder))
-        if (entry.path().extension() == ".nes")
-            roms_.push_back(entry.path().string());
+    {
+        const auto& ext = entry.path().extension();
+        if (ext == ".nes" || ext == ".NES")
+            roms_.push_back(Rom::parseHeader(entry.path().string()));
+    }
 
-    std::sort(roms_.begin(), roms_.end(), [](const std::string& a, const std::string& b) {
-        return fs::path(a).filename() < fs::path(b).filename();
+    std::sort(roms_.begin(), roms_.end(), [](const RomInfo& a, const RomInfo& b) {
+        return a.name < b.name;
     });
 }
 
+// ─── show ────────────────────────────────────────────────────────────────────
 void MainMenu::show()
 {
+    using namespace Terminal;
     using namespace Terminal::Color;
 
     Terminal::clear();
 
-    const std::string hline = Terminal::repeat("=", BOX_W);
-    const std::string blank(BOX_W, ' ');
+    const size_t total  = roms_.size();
+    const size_t valid  = static_cast<size_t>(
+        std::count_if(roms_.begin(), roms_.end(), [](const RomInfo& r){ return r.valid; })
+    );
 
     // Top border
-    std::cout << PURPLE << BOLD << "+" << hline << "+\n" << RESET;
+    std::cout << makeFullSep("+", "+");
 
     // Title
-    {
-        std::string title = Terminal::center("SUPER EMULATOR - ROM LIBRARY", BOX_W);
-        std::cout << PURPLE << BOLD << "||" << RESET
-                  << PURPLE_L << BOLD << title << RESET
-                  << PURPLE << BOLD << "||\n" << RESET;
-    }
+    printWide("SUPER EMULATOR  -  ROM LIBRARY", PURPLE_L);
+    printWide(std::format("{} ROM(s) found  ({} valid)", total, valid), GRAY);
 
-    // Divider
-    std::cout << PURPLE << BOLD << "+" << hline << "+\n" << RESET;
+    // Column header top separator
+    std::cout << makeSep("+", "+", "+");
 
-    // Empty row
-    borderRow(blank);
+    // Column header row
+    std::cout
+        << col(PURPLE, "|| ") << col(WHITE, " #")
+        << col(PURPLE, " || ") << col(WHITE, padRight("Name", 32))
+        << col(PURPLE, " || ") << col(WHITE, " Mpr")
+        << col(PURPLE, " || ") << col(WHITE, "Pr")
+        << col(PURPLE, " || ") << col(WHITE, "Ch")
+        << col(PURPLE, " || ") << col(WHITE, "TV")
+        << col(PURPLE, " ||\n");
 
+    // Column header bottom separator
+    std::cout << makeSep("+", "+", "+");
+
+    // ROM rows
     if (roms_.empty())
     {
-        std::string msg = Terminal::padRight("  No NES ROMs found in /roms/", BOX_W);
-        borderRow(std::string(GRAY) + msg + std::string(RESET));
+        printWide("  No .nes files found in /roms/", GRAY);
+        printWide("  Place NES ROM files there and restart.", GRAY);
     }
     else
     {
         for (size_t i = 0; i < roms_.size(); ++i)
-        {
-            std::string name  = fs::path(roms_[i]).filename().string();
-            std::string entry = Terminal::padRight(std::format("  [{:2}]  {}", i, name), BOX_W);
-            borderRow(std::string(PURPLE_L) + entry + std::string(RESET));
-        }
+            printRow(i, roms_[i]);
     }
 
-    // Empty row
-    borderRow(blank);
+    // Footer separator
+    std::cout << makeSep("+", "+", "+");
 
-    // Controls row
-    std::cout << PURPLE << BOLD << "+" << hline << "+\n" << RESET;
+    // Controls hint
     {
-        std::string hint = Terminal::padRight("  [0-N] Select ROM    [Q] Quit", BOX_W);
-        borderRow(std::string(GRAY) + hint + std::string(RESET));
+        std::string hint = "[0-N] Select";
+        if (!roms_.empty())
+        {
+            const size_t bat = static_cast<size_t>(
+                std::count_if(roms_.begin(), roms_.end(),
+                    [](const RomInfo& r){ return r.valid && r.battery; })
+            );
+            if (bat > 0)
+                hint += std::format("  [*={} battery-backed]", bat);
+        }
+        hint += "  [Q] Quit";
+        printWide(hint, GRAY);
     }
 
     // Bottom border
-    std::cout << PURPLE << BOLD << "+" << hline << "+\n" << RESET;
+    std::cout << makeFullSep("+", "+");
 
     // Prompt
-    std::cout << "\n" << PURPLE_L << BOLD << " > " << RESET;
+    std::cout << "\n" << col(PURPLE_L, " > ") << col(Color::RESET, "");
 
     std::string input;
     std::cin >> input;
@@ -115,7 +199,7 @@ std::string MainMenu::getSelectedRom() const
 {
     if (selectedIndex_ < 0 || selectedIndex_ >= static_cast<int>(roms_.size()))
         return "";
-    return roms_[selectedIndex_];
+    return roms_[selectedIndex_].path;
 }
 
-bool MainMenu::wantsQuit() const { return quit_; }
+bool MainMenu::wantsQuit() const noexcept { return quit_; }

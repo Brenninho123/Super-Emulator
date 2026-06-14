@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 
+#include "../roms/Rom.hpp"
+
 class MainMenu
 {
 public:
@@ -10,10 +12,12 @@ public:
     void show();
 
     std::string getSelectedRom() const;
-    bool        wantsQuit()      const;
+    bool        wantsQuit()      const noexcept;
 
 private:
-    std::vector<std::string> roms_;
+    std::vector<RomInfo> roms_;
     int  selectedIndex_ = -1;
     bool quit_          = false;
+
+    void printRow(size_t idx, const RomInfo& info) const;
 };

@@ -17,8 +17,12 @@ namespace Terminal
         constexpr std::string_view DIM      = "\033[2m";
         constexpr std::string_view PURPLE   = "\033[38;2;148;0;211m";
         constexpr std::string_view PURPLE_L = "\033[38;2;210;140;255m";
+        constexpr std::string_view PURPLE_D = "\033[38;2;80;0;140m";
         constexpr std::string_view GRAY     = "\033[90m";
         constexpr std::string_view WHITE    = "\033[97m";
+        constexpr std::string_view GREEN    = "\033[38;2;100;220;100m";
+        constexpr std::string_view YELLOW   = "\033[38;2;255;200;50m";
+        constexpr std::string_view RED      = "\033[38;2;220;60;60m";
     }
 
     inline void enableAnsi()
@@ -49,17 +53,25 @@ namespace Terminal
     {
         if (text.size() >= width)
             return std::string(text.substr(0, width));
-        size_t lpad = (width - text.size()) / 2;
-        size_t rpad = width - text.size() - lpad;
+        const size_t lpad = (width - text.size()) / 2;
+        const size_t rpad =  width - text.size() - lpad;
         return std::string(lpad, ' ') + std::string(text) + std::string(rpad, ' ');
     }
 
     inline std::string padRight(std::string s, size_t width)
     {
-        if (s.size() < width)
-            s.append(width - s.size(), ' ');
-        else if (s.size() > width)
-            s = s.substr(0, width - 3) + "...";
+        if (s.size() < width)       s.append(width - s.size(), ' ');
+        else if (s.size() > width)  s = s.substr(0, width - 3) + "...";
         return s;
+    }
+
+    inline std::string col(std::string_view color, std::string_view text)
+    {
+        return std::string(color) + std::string(text) + std::string(Color::RESET);
+    }
+
+    inline std::string bold(std::string_view text)
+    {
+        return col(Color::BOLD, text);
     }
 }
