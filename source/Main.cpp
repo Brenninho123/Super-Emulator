@@ -3,22 +3,18 @@
 
 int main()
 {
-    std::cout << "=========================\n";
-    std::cout << Project::NAME << '\n';
-    std::cout << "Version: " << Project::VERSION << '\n';
-    std::cout << "Main Class: " << Project::MAIN_CLASS << '\n';
-    std::cout << "=========================\n\n";
+    std::cout << "Super Emulator" << std::endl;
+    std::cout << "Main Class: " << Project::MAIN_CLASS << std::endl;
+    std::cout << "Source Path: " << Project::SOURCE_PATH << std::endl;
 
     auto sourceFiles = Project::getSourceFiles();
 
-    std::cout << "Loaded source files:\n";
+    std::cout << "\nLoaded Source Files:\n";
 
     for (const auto& file : sourceFiles)
     {
-        std::cout << "- " << file << '\n';
+        std::cout << file << std::endl;
     }
-
-    std::cout << "\nSuper Emulator started successfully.\n";
 
     return 0;
 }
