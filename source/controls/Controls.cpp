@@ -3,6 +3,7 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <Xinput.h>
+#pragma comment(lib, "User32.lib")
 #pragma comment(lib, "Xinput.lib")
 #endif
 
