@@ -15,7 +15,7 @@
 #include "menu/MainMenu.hpp"
 #include "roms/Rom.hpp"
 
-static constexpr std::string_view VERSION    = "1.0.0";
+static constexpr std::string_view VERSION    = "0.1.0";
 static constexpr std::string_view SYSTEM     = "NES";
 static constexpr int              TARGET_FPS = 60;
 static constexpr double           FRAME_TIME = 1.0 / TARGET_FPS;
